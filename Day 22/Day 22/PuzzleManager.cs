@@ -9,55 +9,75 @@ namespace Day_22
     class PuzzleManager
     {
         public string InputFileName { get; set; }
-        public List<Instruction> Instructions { get; set; }
 
         public PuzzleManager(string inputFileName)
         {
             InputFileName = inputFileName;
-            Instructions = InputHelper.Parse(inputFileName);
         }
 
-        public void SolvePartOne()
+        public void Solve(string puzzlePart)
         {
-            var coordStatus = new Dictionary<(int, int, int), bool>();
-            foreach (var instruction in Instructions)
+            var instructions = InputHelper.Parse(InputFileName);
+            var cuboidVolumeDictionary = new Dictionary<Cuboid, long>();
+            foreach (var instruction in instructions)
             {
-                if (Math.Abs(instruction.x1) > 50 || Math.Abs(instruction.x2) > 50) continue;
+                if (puzzlePart == "one" && (Math.Abs(instruction.Cuboid.Vertex1.Item1) > 50 || Math.Abs(instruction.Cuboid.Vertex2.Item1) > 50)) continue;
 
-                for (int i = instruction.x1; i <= instruction.x2; i++)
+                var newCuboidVolumeDictionary = new Dictionary<Cuboid, long>();
+                foreach (var cuboidVolume in cuboidVolumeDictionary)
                 {
-                    for (int j = instruction.y1; j <= instruction.y2; j++)
+                    // If no overlap continue;
+                    if (Math.Max(Math.Min(instruction.Cuboid.Vertex2.Item1, cuboidVolume.Key.Vertex2.Item1) - Math.Max(instruction.Cuboid.Vertex1.Item1, cuboidVolume.Key.Vertex1.Item1) + 1, 0) == 0 ||
+                        Math.Max(Math.Min(instruction.Cuboid.Vertex2.Item2, cuboidVolume.Key.Vertex2.Item2) - Math.Max(instruction.Cuboid.Vertex1.Item2, cuboidVolume.Key.Vertex1.Item2) + 1, 0) == 0 ||
+                        Math.Max(Math.Min(instruction.Cuboid.Vertex2.Item3, cuboidVolume.Key.Vertex2.Item3) - Math.Max(instruction.Cuboid.Vertex1.Item3, cuboidVolume.Key.Vertex1.Item3) + 1, 0) == 0)
                     {
-                        for (int k = instruction.z1; k <= instruction.z2; k++)
+                        continue;
+                    }
+
+                    var overlapCuboid = new Cuboid((Math.Max(instruction.Cuboid.Vertex1.Item1, cuboidVolume.Key.Vertex1.Item1), Math.Max(instruction.Cuboid.Vertex1.Item2, cuboidVolume.Key.Vertex1.Item2), Math.Max(instruction.Cuboid.Vertex1.Item3, cuboidVolume.Key.Vertex1.Item3)),
+                                                   (Math.Min(instruction.Cuboid.Vertex2.Item1, cuboidVolume.Key.Vertex2.Item1), Math.Min(instruction.Cuboid.Vertex2.Item2, cuboidVolume.Key.Vertex2.Item2), Math.Min(instruction.Cuboid.Vertex2.Item3, cuboidVolume.Key.Vertex2.Item3)));
+
+                    if (cuboidVolume.Value > 0)
+                    {
+                        newCuboidVolumeDictionary.Add(overlapCuboid, -overlapCuboid.CalculateVolume());
+                    }
+                    else if (cuboidVolume.Value < 0)
+                    {
+                        newCuboidVolumeDictionary.Add(overlapCuboid, overlapCuboid.CalculateVolume());
+                    }
+                }
+
+                if (instruction.Name == "on")
+                {
+                    newCuboidVolumeDictionary.Add(instruction.Cuboid, instruction.Cuboid.CalculateVolume());
+                }
+
+                foreach (var cuboidVolume in newCuboidVolumeDictionary)
+                {
+                    if (cuboidVolumeDictionary.ContainsKey(cuboidVolume.Key))
+                    {
+                        if (cuboidVolumeDictionary[cuboidVolume.Key] + cuboidVolume.Value == 0)
                         {
-                            if (coordStatus.ContainsKey((i, j, k)))
-                            {
-                                if (instruction.Name == "on")
-                                {
-                                    coordStatus[(i, j, k)] = true;
-                                }
-                                else
-                                {
-                                    coordStatus[(i, j, k)] = false;
-                                }
-                            }
-                            else
-                            {
-                                if (instruction.Name == "on")
-                                {
-                                    coordStatus.Add((i, j, k), true);
-                                }
-                                else
-                                {
-                                    coordStatus.Add((i, j, k), false);
-                                }
-                            }
+                            cuboidVolumeDictionary.Remove(cuboidVolume.Key);
                         }
+                        else
+                        {
+                            cuboidVolumeDictionary[cuboidVolume.Key] += cuboidVolume.Value;
+                        }
+                    }
+                    else
+                    {
+                        cuboidVolumeDictionary.Add(cuboidVolume.Key, cuboidVolume.Value);
                     }
                 }
             }
-            var solution = coordStatus.Values.Count(x => x);
-            Console.WriteLine($"The solution to part one is {solution}.");
+
+            long solution = 0;
+            foreach (var volume in cuboidVolumeDictionary.Values)
+            {
+                solution += volume;
+            }
+            Console.WriteLine($"The solution to part {puzzlePart} is {solution}.");
         }
     }
 }
